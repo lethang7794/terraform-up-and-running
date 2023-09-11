@@ -16,7 +16,7 @@ terraform {
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_launch_configuration" "my_launch_config" {
   image_id        = "ami-0464f90f5928bccb8"
-  instance_type   = "t2.micro"
+  instance_type   = var.instance_type
   security_groups = [aws_security_group.ec2_instance.id]
 
 
@@ -41,21 +41,22 @@ resource "aws_autoscaling_group" "example" {
   target_group_arns = [aws_lb_target_group.asg.arn] # Attach our Auto Scaling Group with load balancer target group. AWS will automatically add and remove instances from the target group over its life cycle
   health_check_type = "ELB"                         # Use the target group’s health check 
 
-  min_size = 2
-  max_size = 5
+  min_size = var.min_size
+  max_size = var.max_size
 
   tag {
     key                 = "Name"
-    value               = "terraform-asg-example"
+    value               = var.cluster_name
     propagate_at_launch = true
   }
 }
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # APPLICATION LOAD BALANCER
 # ---------------------------------------------------------------------------------------------------------------------
 resource "aws_lb" "example" {
-  name               = "terraform-asg-example"
+  name               = var.cluster_name
   load_balancer_type = "application"
   subnets            = data.aws_subnets.default.ids # Use all the subnets in our Default VPC (by using the aws_subnets data source). ⚠️ In production, we should create a new VPC 
   security_groups    = [aws_security_group.alb.id]  # Use the security group that allow HTTP rueqest on port 80
@@ -64,7 +65,7 @@ resource "aws_lb" "example" {
 # A LB Listerer that listens on port 80 and protocol HTTP
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.example.arn
-  port              = 80
+  port              = local.http_port
   protocol          = "HTTP"
 
   # By default, return a simple 404 page
@@ -126,7 +127,7 @@ resource "random_uuid" "my_uuid" {
 
 # A Security Group that allows inbound request to EC2 instance port
 resource "aws_security_group" "ec2_instance" {
-  name = "ec2-sg-${random_uuid.my_uuid.result}"
+  name = "${var.cluster_name}-ec2-instance"
 
   # Allow inbound HTTP requests on the server port
   ingress {
@@ -145,25 +146,21 @@ resource "aws_security_group" "ec2_instance" {
   }
 }
 
-# By default, all AWS resources, including ALBs, don’t allow any incoming or outgoing traffic
-# We need to create create a security group to allow incoming HTTP request on port 80
 resource "aws_security_group" "alb" {
-  name = "alb-sg-${random_uuid.my_uuid.result}"
+  name = "${var.cluster_name}-alb"
 
-  # Allow inbound HTTP requests on port 80
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = local.http_port
+    to_port     = local.http_port
+    protocol    = local.tcp_protocol
+    cidr_blocks = local.all_ips
   }
 
-  # Allow all outbound requests: so load balancer can perform health checks
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = local.any_port
+    to_port     = local.any_port
+    protocol    = local.any_protocol
+    cidr_blocks = local.all_ips
   }
 }
 
@@ -189,8 +186,8 @@ data "terraform_remote_state" "db" {
 
   #  The configuration of the remote backend
   config = {
-    bucket = "tf-state-07-hello-world-s3-backend"
-    key    = "stage/data-stores/mysql/terraform.tfstate"
+    bucket = var.db_remote_state_bucket
+    key    = var.db_remote_state_key
     region = "ap-southeast-1"
   }
 }

@@ -6,11 +6,7 @@
 
 > What is **secrets management**?
 >
-> > A practice that allow developers to
-> >
-> > securely store secret
-> >
-> > - in a secure environment with strict access controls.
+> > A practice that allow developers to _securely store secret_ in a secure environment with strict access controls.
 
 ## Secret Management Basics
 
@@ -641,17 +637,43 @@ Do _NOT_ store secrets in plaintext. 🔐
 To pass secrets to providers:
 
 - for **human users**:
+
   - personal secret managers
   - Set environemnt variables
-- for **machine users**"
+
+- for **machine users**:
+
   - Use stored credentials
   - IAM roles
   - OIDC
+
+  |                                     | Stored credentials | IAM roles                  | OIDC           |
+  | ----------------------------------- | ------------------ | -------------------------- | -------------- |
+  | Example                             | CircleCI           | Jenkins on an EC2 Instance | GitHub Actions |
+  | Avoid manually managing credentials | x                  | ✓                          | ✓              |
+  | Avoid using permanent credentials   | x                  | ✓                          | ✓              |
+  | Works inside of cloud provider      | x                  | ✓                          | x              |
+  | Works outside of cloud provider     | ✓                  | x                          | ✓              |
+  | Widely supported as of 2022         | ✓                  | ✓                          | x              |
 
 To pass secrets to resources:
 
 - Environment variables
 - Encrypted files
 - Centralized secret stores.
+
+|                                            | Environment variables | Encrypted files | Centralized secret stores |
+| ------------------------------------------ | --------------------- | --------------- | ------------------------- |
+| Keeps plain-text secrets out of code       | ✓                     | ✓               | ✓                         |
+| All secrets management defined as code     | x                     | ✓               | ✓                         |
+| Audit log for access to encryption keys    | x                     | ✓               | ✓                         |
+| Audit log for access to individual secrets | x                     | x               | ✓                         |
+| Rotating or revoking secrets is easy       | x                     | x               | ✓                         |
+| Standardizing secrets management is easy   | x                     | x               | ✓                         |
+| Secrets are versioned with the code        | x                     | ✓               | x                         |
+| Storing secrets is easy                    | ✓                     | x               | ✓                         |
+| Retrieving secrets is easy                 | ✓                     | ✓               | x                         |
+| Integrating with automated testing is easy | ✓                     | x               | x                         |
+| Cost                                       | 0                     | $               | $$$                       |
 
 No mater how we pass secrets, Terraform will store those secrets in plaintext in state files and plan files.

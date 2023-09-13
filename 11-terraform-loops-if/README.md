@@ -765,20 +765,631 @@ module "webserver_cluster" {
 
 #### If-else-statements with the `count` Parameter
 
-### Conditionals with `for_each` and `for` Expressions
+Example: We have 2 `aws_iam_policy` needs to be conditional applied to an `aws_iam_user`
+
+```t
+# A IAM policy with CloudWatch read only permissions
+resource "aws_iam_policy" "cloudwatch_read_only" {
+  name   = "cloudwatch-read-only"
+  policy = data.aws_iam_policy_document.cloudwatch_read_only.json
+}
+
+data "aws_iam_policy_document" "cloudwatch_read_only" {
+  statement {
+    effect    = "Allow"
+    actions   = [
+      "cloudwatch:Describe*",
+      "cloudwatch:Get*",
+      "cloudwatch:List*"
+    ]
+    resources = ["*"]
+  }
+}
+```
+
+```t
+# A IAM policy with CloudWatch full permissions
+resource "aws_iam_policy" "cloudwatch_full_access" {
+  name   = "cloudwatch-full-access"
+  policy = data.aws_iam_policy_document.cloudwatch_full_access.json
+}
+
+data "aws_iam_policy_document" "cloudwatch_full_access" {
+  statement {
+    effect    = "Allow"
+    actions   = ["cloudwatch:*"]
+    resources = ["*"]
+  }
+}
+```
+
+Which use will have full access?
+
+```t
+variable "give_neo_cloudwatch_full_access" {
+  description = "If true, neo gets full access to CloudWatch"
+  type        = bool
+}
+```
+
+Let's simulate if-else-statements with `count` and `ternary`:
+
+```t
+resource "aws_iam_user_policy_attachment" "neo_cloudwatch_full_access" {
+  count = var.give_neo_cloudwatch_full_access ? 1 : 0
+
+  user       = aws_iam_user.example[0].name
+  policy_arn = aws_iam_policy.cloudwatch_full_access.arn
+}
+
+resource "aws_iam_user_policy_attachment" "neo_cloudwatch_read_only" {
+  count = var.give_neo_cloudwatch_full_access ? 0 : 1
+
+  user       = aws_iam_user.example[0].name
+  policy_arn = aws_iam_policy.cloudwatch_read_only.arn
+}
+
+# A not so robust output
+output "neo_cloudwatch_policy_arn_BAD" {
+  value = (
+    var.give_neo_cloudwatch_full_access
+    ? aws_iam_user_policy_attachment.neo_cloudwatch_full_access[0].policy_arn
+    : aws_iam_user_policy_attachment.neo_cloudwatch_read_only[0].policy_arn
+  )
+}
+
+# A better output
+output "neo_cloudwatch_policy_arn_GOOD" {
+  # one function takes a list as input
+  # - if the list has 0 elements, it returns null;
+  # - if the list has 1 element, it returns that element;
+  # - if the list has more than 1 element, it shows an error.
+
+  # concat function takes two or more lists as inputs and combines them into a single list.
+  value = one(concat(
+    aws_iam_user_policy_attachment.neo_cloudwatch_full_access[*].policy_arn,
+    aws_iam_user_policy_attachment.neo_cloudwatch_read_only[*].policy_arn
+  ))
+}
+```
+
+### Conditionals with `for_each` Meta-Argument and `for` Expressions
+
+Recall previous `for_each` example, there is already a little conditional here.
+
+```t
+# modules/services/webserver-cluster/main.tf
+
+resource "aws_autoscaling_group" "example" {
+  # ...
+  dynamic "tag" {
+    for_each = var.custom_tags  If var.custom_tags is empty, no tag will be set.
+
+    content {
+      key                 = tag.key
+      value               = tag.value
+    }
+  }
+}
+```
+
+We can go even further by combining adding a `for` expression:
+
+```t
+resource "aws_autoscaling_group" "example" {
+  dynamic "tag" {
+    for_each = {
+      for key, value in var.custom_tags: key => upper(value) # A normal for expression
+      if key != "Name"                                       # Conditional with if clause (or filter elements)
+    }
+
+    content {
+      # ...
+    }
+  }
+}
+```
 
 ### Conditionals with the `if` String Directive
 
+```t
+%{ if <CONDITION> }<TRUEVAL>%{ endif }
+```
+
+e.g.
+
+```t
+variable "names" {
+  description = "Names to render"
+  type        = list(string)
+  default     = ["neo", "trinity", "morpheus"]
+}
+
+output "awesome_string_without_if" {
+  # This will have an extra comma and space `, `
+  value = "%{ for name in var.names }${name}, %{ endfor }"
+
+  # Use HEREDOC to make it more readable
+  value = <<EOF
+"%{ for i, name in var.names }
+  ${name},
+%{ endfor }"
+EOF
+}
+
+output "awesome_string_with_if" {
+  value = <<EOF
+%{ for i, name in var.names }
+  ${name}%{ if i < length(var.names) - 1 }, %{ endif } # Skip the separator for the last item
+%{ endfor }
+EOF
+}
+```
+
+```shell
+$ terraform apply
+
+(...)
+
+Outputs:
+
+for_directive_index_if = <<EOT
+
+  neo,
+
+  trinity,
+
+  morpheus
+
+
+EOT
+```
+
+> HEREDOC: Allow define multiline strings
+>
+> 👉 The code can be split to several lines so it is more readable.
+
+The extra comma and extra space are removed. But we have some other whitespace (spaces and new lines)
+
+We can fix this by adding `strip markers` (`~`) to our string directive.
+
+```t
+output "for_directive_index_if_strip" {
+  value = <<EOF
+%{~ for i, name in var.names ~}
+${name}%{ if i < length(var.names) - 1 }, %{ endif }
+%{~ endfor ~}
+EOF
+}
+```
+
+```shell
+$ terraform apply
+(...)
+Outputs:
+for_directive_index_if_strip = "neo, trinity, morpheus"
+```
+
+We can even make a the output a little more fancy by adding an `else` statement:
+
+```t
+# if-else string directive syntax
+%{ if <CONDITION> }<TRUEVAL>%{ else }<FALSEVAL>%{ endif }
+```
+
+```t
+output "for_directive_index_if_else_strip" {
+  value = <<EOF
+%{~ for i, name in var.names ~}
+${name}%{ if i < length(var.names) - 1 }, %{ else }.%{ endif } # Add a period at the end
+%{~ endfor ~}
+EOF
+}
+```
+
+```shell
+$ terraform apply
+(...)
+Outputs:
+for_directive_index_if_else_strip = "neo, trinity, morpheus."
+```
+
 ## Zero-Downtime Deployment
+
+### Simulating a new deployment
+
+Our module is now clean and simple for deploying a web server cluster.
+
+The next question is how do we update that cluster?
+
+- When we make changes to our code, how do we deploy the new AMI across the cluster?
+- How to do that without causing downtime?
+
+In a real world scenario, the first step is expose the AMI as an input variable
+
+```t
+# modules/services/webserver-cluster/variables.tf
+variable "ami" {
+  description = "The AMI to run in the cluster"
+  type        = string
+  default     = "ami-0fb653ca2d3203ac1"
+}
+```
+
+But for now, we will simulate the new code (and the new AMI) with a change in `User Data` script by exposing a `server_text` input variable:
+
+```t
+variable "server_text" {
+  description = "The text the web server should return"
+  type        = string
+  default     = "Hello, World"
+}
+```
+
+Pass the `server_text` value to the template:
+
+```t
+# modules/services/webserver-cluster/main.tf
+resource "aws_launch_configuration" "example" {
+  # ...
+  user_data = templatefile("${path.module}/user-data.sh", {
+    # ...
+    server_text = var.server_text
+  })
+  # ...
+}
+```
+
+Use the `server_text` value in user data script:
+
+```bash
+# modules/services/webserver-cluster/user-data.sh
+# ...
+<h1>${server_text}</h1>
+# ...
+```
+
+###
+
+The final step is set the `ami` and `server_text` to a new value in `root module`:
+
+```t
+module "webserver_cluster" {
+  source = "../../../../modules/services/webserver-cluster"
+  ami         = "ami-0fb653ca2d3203ac1"
+  server_text = "New server text"
+  # ...
+}
+```
+
+```shell
+$ terraform plan
+
+Terraform will perform the following actions:
+
+  # module.webserver_cluster.aws_autoscaling_group.ex will be updated in-place
+  ~ resource "aws_autoscaling_group" "example" {
+        id                        = "webservers-stage-terraform-20190516"
+      ~ launch_configuration      = "terraform-20190516" -> (known after apply)
+        (...)
+    }
+
+  # module.webserver_cluster.aws_launch_configuration.ex must be replaced
++/- resource "aws_launch_configuration" "example" {
+      ~ id                          = "terraform-20190516" -> (known after apply)
+        (...)
+      ~ user_data                   = "bd7c0a6" -> "4919a13" # forces replacement
+        (...)
+    }
+
+Plan: 1 to add, 1 to change, 1 to destroy.
+```
+
+Terraform plan to do 2 things:
+
+- Replace the `aws_launch_configuration` with a new that has updated `user_data`.
+- Update in-place `aws_autoscaling_group` to reference to the new `aws_launch_configuration`.
+
+### Implement zero-downtime deployment with Terraform
+
+Currently, the `aws_autoscaling_group` only applies the new AMI image for new EC2 instances.
+
+> **❓ How do we instruct the ASG to deploy new instances (with the new AMI)?**
+>
+> 1. Destroy the ASG, then re-create it.
+>
+>    There will be downtime 🚧, which is not what we want.
+>
+> 2. Create a ASG first, then destroy the old one.
+>
+>    This can be easily done with Terraform [`lifecycle`](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle) - `create_before_destroy`
+
+> 🛠️ Implement zero-downtime deployment with `lifecycle` `create_before_destroy`
+>
+> 1. Force Terraform to replace the ASG when the launch config changed
+>
+>    Add a `name` parameter of ASG which reference the launch config name.
+>
+> 2. Tell Terraform to create a new ASG before destroy the old one
+>
+>    Set `create_before_destroy` parameter of ASG to `true`.
+>
+> 3. Make sure the new ASG working as expected before destroy the old one
+>
+>    Set `min_elb_capacity` of ASG to its `min_size`.
+
+```t
+# modules/services/webserver-cluster/main.tf
+resource "aws_autoscaling_group" "example" {
+  name = "${var.cluster_name}-${aws_launch_configuration.example.name}" # Explicitly depend on the launch configuration's name so each time it's replaced, this ASG is also replaced
+  # ...
+  min_elb_capacity = var.min_size # Wait for at least this many instances to pass health checks before considering the ASG deployment complete
+
+  lifecycle {
+    create_before_destroy = true # When replacing this ASG, create the replacement first, and only delete the original after
+  }
+}
+
+resource "aws_autoscaling_group" "example" {
+  # ...
+}
+```
+
+### Make a zero-downtime
+
+```shell
+$ terraform apply
+
+Terraform will perform the following actions:
+
+  # module.webserver_cluster.aws_autoscaling_group.example must be replaced
++/- resource "aws_autoscaling_group" "example" {
+      ~ id     = "example-2019" -> (known after apply)
+      ~ name   = "example-2019" -> (known after apply) # forces replacement
+        (...)
+    }
+
+  # module.webserver_cluster.aws_launch_configuration.example must be replaced
++/- resource "aws_launch_configuration" "example" {
+      ~ id              = "terraform-2019" -> (known after apply)
+        image_id        = "ami-0fb653ca2d3203ac1"
+        instance_type   = "t2.micro"
+      ~ name            = "terraform-2019" -> (known after apply)
+      ~ user_data       = "bd7c0a" -> "4919a" # forces replacement
+        (...)
+    }
+
+    (...)
+
+Plan: 2 to add, 2 to change, 2 to destroy.
+```
+
+```shell
+$ while true; do curl http://<load_balancer_url>; sleep 1; done
+# 1. Only the old code are running
+# 2. Both old code and new code run at the same time. This will happen still the new ASG has registered enough instance to load balancer
+# 3. Only the new code are running
+```
+
+If something went wrong, Terrafrom will:
+
+- wait up to `wait_for_capacity_timeout` (default is 10 minutes) for the `min_elb_capacity` servers of the ASG v2 to register with the LB.
+- after that the deployment is considered failed
+- then Terraform destroys the ASG v2, and exits with an error. Meanwhile ASG v1 is still up and running.
 
 ## Terraform Gotchas
 
 ### count and for_each Have Limitations
 
+`count` and `for_each` can reference:
+
+- hardcoded values
+
+  e.g `count = 3`
+
+- variables
+
+  e.g. `count = var.num_of_servers`
+
+- data sources
+
+  e.g. `count = length(data.aws_availability_zones.all.names)`
+
+- and even lists of resources (so long as the length of the list can be determined during plan)
+
+But NOT another resource outputs.
+
+e.g. `count = random_integer.num_instances.result # This does NOT work`
+
+Terraform requires that it can compute `count` and `for_each` during the plan phase, before any resources are created or modified.
+
 ### Zero-Downtime Deployment Has Limitations
+
+Using `create_before_destroy` for zero-downtime deployment has drawback:
+
+- It doesn't work with auto scaling policies (the ASG size is reset back to its `min_size`)
+
+  There is some workaround for this
+
+  - Use the `autoscaling_schedule`'s `recurrence` parameter
+
+  - Get the _current capacity_ through a script (that called AWS API), and set the `desired_capacity` to that value.
+
+> 💡 AWS now offers a native solution for zero-downtime deployment for ASG. It's `instance_refresh`.
+>
+> The zero-downtime deployment is now a fully managed process by AWS.
+>
+> The only drawback is it's too slow. 🐌
+
+```t
+resource "aws_autoscaling_group" "example" {
+  name = var.cluster_name
+  # ...
+  instance_refresh { # AWS native solution
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
+  }
+}
+```
+
+Nowadays, many resources support native deployment options:
+
+- [AWS ECS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service)
+
+  ```t
+  resources "aws_ecs_service" "example" {
+    # deployment_maximum_percent
+    # deployment​_minimum_healthy_percent
+  }
+  ```
+
+- [Kubernetes](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/deployment)
+
+  ```t
+  resource "kubernetes_deployment" "example" {
+    strategy = "RollingUpdate"
+    rolling_update {
+      # max_surge
+      # max_unavailable
+    }
+  }
+  ```
+
+Make use of native functionality when we can!
 
 ### Valid Plans Can Fail
 
+Sometimes,
+
+- we run the `terraform plan` and it shows we a perfectly valid-looking plan ✅,
+- but when we run `terraform apply`, it shows an error ❌.
+
+This happens because Terraform looks only at resources in its Terraform state.
+
+If some resources are _out-of-band_:
+
+- Someone manually clicking around the AWS console, or use AWS CLI to update that resources
+  👉 `terraform apply` will fail.
+
+This is a tricky problem.
+
+For now we only need to remember:
+
+- After a resource is created with Terraform, only use Terraform to managed it.
+- If someone modify a resource created with Terraform, check this talk: [Terraform Config Drift: How to Handle Out-of-Band Infrastructure Changes](https://www.hashicorp.com/resources/terraform-config-drift-how-to-handle-out-of-band-infrastructure-changes)
+- If we have existing infrastructure:
+  - Manually use [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands/import) for each resources.
+  - Or use a tool ([`terraformer`](https://github.com/GoogleCloudPlatform/terraformer), [`terracognita`](https://github.com/cycloidio/terracognita)) to automatically import.
+
 ### Refactoring Can Be Tricky
 
+> Refactoring: Restructure the internal details of an existing piece of code without changing its external behavior.
+>
+> The goal is to improve the readability, maintainability, and general hygiene of the code.
+>
+> e.g. Rename a variable, function. This can be done easily without thinking twice if the IDE supports it.
+
+With Terraform, refactor can be tricky.
+
+#### Rename a input variable
+
+For example:
+
+```t
+variable "cluster_name" {
+  type = string
+}
+
+resource "aws_lb" "example" {
+  name = var.cluster_name
+}
+```
+
+If we rename the input variable from `cluster_name` to `name`, the `aws_lb` `name` parameter will be changed too.
+
+When we run `terraform apply`, Terraform will delete the old `aws_lb` and create a new `aws_lb` resource. It's downtime 🚧.
+
+> **⚠️ Warning**
+>
+> If we change the `name` parameter of certain resources, Terraform will delete the old version of resource, and create a new version to replace it.
+>
+> While the resources is re-created, the might be side-effect that we don't want:
+>
+> - If it's a ALB, no traffic is routed to the web servers.
+> - If it'a security group, the server will reject all network traffic.
+
+#### Rename a resource identifier
+
+For example:
+
+```t
+resource "aws_security_group" "instance" {
+  # (...)
+}
+```
+
+If we change `instance` to `ec2_instance`, and apply it. It's downtime.
+
+As far as Terraform knows, we deleted the old resource and have added a completely new one.
+
+> ℹ️ INFO
+>
+> Terraform associates each _resource identifier_ with an _identifier_ from the cloud provider.
+>
+> e.g.
+>
+> - an `iam_user` resource is associated with an AWS _IAM User ID_
+> - an `aws_instance` resource with an AWS _EC2 Instance ID_
+
+#### Refactoring lessons
+
+1. Always use `terraform plan`.
+
+   Carefully scan the output and check if Terraform is deleting some resources that we don't want to delete.
+
+2. If a resource need to be replaced, create before destroy
+
+   - Use the `lifecycle` `create_before_destroy`
+   - Or do it manually:
+     - Add the _new_ resource to Terraform config then apply.
+     - Remove the _old_ resource from Terraform config.
+
+3. Refactoring may require changing state
+
+   But don't modify Terraform state files by hand.
+
+   - Do it manually with `terraform state mv`.
+
+     ```shell
+     terraform state mv <ORIGINAL_REFERENCE> <NEW_REFERENCE>
+
+     # e.g.
+     terraform state mv \
+       aws_security_group.instance \
+       aws_security_group.cluster_instance
+     ```
+
+   - or do it automatically by adding a `moved` block to code.
+     ```t
+     moved {
+       from = aws_security_group.instance
+       to   = aws_security_group.cluster_instance
+     }
+     ```
+
+4. Some parameters are _immutable_
+
+   If we change these _immutable_ parameters, Terraform will delete the old resource and create a new one.
+
 ## Conclusion
+
+Although Terraform is a **declarative** language, it includes a large number of tools:
+
+- variables and modules
+- loops: count, for_each, for
+- if-statement tricks
+- lifecycle (create_before_destroy), and built-in functions
+
+that give the language a surprising amount of flexibility and expressive power.

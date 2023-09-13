@@ -2,7 +2,7 @@
 
 ## Loops
 
-### Loops with the `count` parameter
+### Loops with the [`count` Meta-Argument](https://developer.hashicorp.com/terraform/language/meta-arguments/count)
 
 `count` is Terraform’s oldest 👴, simplest 🍰, and most limited 🤏 iteration construct.
 
@@ -11,7 +11,7 @@
 ```t
 # live/global/iam/main.tf
 
-# Createa an IAM user
+# Create an IAM user
 resource "aws_iam_user" "one_user" {
   name = "neo"
 }
@@ -84,7 +84,7 @@ output "all_arns" {
 ```
 
 ```shell
-$ terrafrom apply
+$ terraform apply
 
 (...)
 
@@ -222,12 +222,12 @@ aws_iam_user.example[1]: morpheus
 
 This will cause so much problems:
 
-- Lose availibility: During the apply, the user can't access AWS.
+- Lose availability: During the apply, the user can't access AWS.
 - Or worse, lose data: If the resource is a database.
 
 To solve these problem, Terrafrom 0.12 introduced `for_each`.
 
-### Loops with the `for_each` expressions
+### Loops with the [`for_each` Meta-Argument](https://developer.hashicorp.com/terraform/language/meta-arguments/for_each)
 
 #### Using `for_each` with resources
 
@@ -252,7 +252,7 @@ variable "usernames" {
 resource "aws_iam_user" "example" {
   # Use for_each to loop over the set of usernames
   for_each = toset(var.usernames) # Use toset to convert the list into a set. ⚠️ When using on a resource, for_each support only sets/maps.
-  name     = each.value # Use eact.value to access the username
+  name     = each.value # Use each.value to access the username
 }
 
 output "all_users" {
@@ -306,7 +306,7 @@ The `aws_iam_user.example` is a map:
 
 > **Note:** The order of the items may be changed. They will be sorted by the keys.
 
-If we want to get the same output values as when we use `count`. We need to extract it from the map using `values` function, and a splat expression `*`.
+If we want to get the same output values as when we use `count`. We need to extract it from the map using `values` function, and a [`splat expression`](https://developer.hashicorp.com/terraform/language/expressions/splat) `*`.
 
 ```t
 output "all_arns" {
@@ -392,7 +392,7 @@ all_arns = [
 ]
 ```
 
-#### Using `for_each` witin resources to create multiple inline blocks (or [dynamic Blocks](https://developer.hashicorp.com/terraform/language/expressions/dynamic-blocks))
+#### Using `for_each` within resources to create multiple inline blocks (or [dynamic Blocks](https://developer.hashicorp.com/terraform/language/expressions/dynamic-blocks))
 
 A `dynamic block` acts much like a `for` expression, but produces nested blocks instead of a complex typed value.
 
@@ -448,7 +448,7 @@ resource "aws_autoscaling_group" "example" {
     propagate_at_launch = true
   }
 
-  dynamic "tag" { # tag is the variable that will store the value of eact "iteration"
+  dynamic "tag" { # tag is the variable that will store the value of each "iteration"
     for_each = var.custom_tags
 
     content {
@@ -507,7 +507,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 > }
 > ```
 
-### Loops with the `for` expressions
+### Loops with the [`for` Expressions](https://developer.hashicorp.com/terraform/language/expressions/for)
 
 We can create use loops to create:
 
@@ -522,7 +522,7 @@ let usernames_uppercase = usernames.map((u) => u.toUppercase());
 // ["NEO", "TRINITY", "MORPHEUS"]
 ```
 
-Terraform can do this with `for` expression:
+Terraform can do this with `for` Expression:
 
 ```t
 [for <ITEM> in <LIST> : <OUTPUT>]
@@ -573,7 +573,7 @@ upper_names = [
   ]
   ```
 
-- Another synxtax `[for <KEY>, <VALUE> in <MAP> : <OUTPUT>]` (Just like Golang).
+- Another syntax `[for <KEY>, <VALUE> in <MAP> : <OUTPUT>]` (Just like Golang).
 
   ```t
   variable "character_roles" {
@@ -622,12 +622,12 @@ upper_names = [
 
   > ⚠️ Don't forget the curly brackets {}
 
-### Loops with the `for` string directive
+### Loops with the `for` [String Directive](https://developer.hashicorp.com/terraform/language/expressions/strings#string-templates)
 
 We can use `for` string directive to
 
-- itereate over a collections
-- evalutes a given templace once for each element
+- iterate over a collections
+- evaluate a given template once for each element
 - concatenate the results together.
 
 It's call `string directive`:
@@ -699,9 +699,9 @@ awesome_string_with_index = "(0) neo, (1) trinity, (2) morpheus, "
 
 Each of the ways to do loops needs a different way to do conditionals. 🥲
 
-### Conditionals with the `count` Parameter
+### Conditionals with the `count` Meta-Argument
 
-#### If-statements with the `count` Parameter
+#### If-statements with the `count` Meta-Argument
 
 Back to the Auto Scaling Group example, we want to scale the cluster out only in production.
 
@@ -752,7 +752,7 @@ module "webserver_cluster" {
 }
 ```
 
-Enable auto scaling for `prod` environemnt:
+Enable auto scaling for `prod` environment:
 
 ```t
 # live/prod/services/webserver-cluster/main.tf

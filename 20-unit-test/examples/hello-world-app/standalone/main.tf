@@ -13,19 +13,20 @@ provider "aws" {
   region = "us-east-2"
 }
 
-module "asg" {
-  source = "../../modules/cluster/asg-rolling-deploy"
+module "hello_world_app" {
+  source = "../../../modules/services/hello-world-app"
 
-  cluster_name  = var.cluster_name
+  server_text = var.server_text
 
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = "t2.micro"
+  environment = var.environment
 
-  min_size           = 1
-  max_size           = 1
+  mysql_config = var.mysql_config
+
+  instance_type      = "t2.micro"
+  min_size           = 2
+  max_size           = 2
   enable_autoscaling = false
-
-  subnet_ids = data.aws_subnets.default.ids
+  ami                = data.aws_ami.ubuntu.id
 }
 
 data "aws_ami" "ubuntu" {

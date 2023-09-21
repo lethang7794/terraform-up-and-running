@@ -4,7 +4,7 @@ This folder contains an example [Terraform](https://www.terraform.io/) configura
 deploying a load balancer (using [ELB](https://aws.amazon.com/elasticloadbalancing/)) in an 
 [Amazon Web Services (AWS) account](http://aws.amazon.com/).
 
-For more info, please see Chapter 8, "Production-grade Terraform code", of 
+For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.
 
 ## Quick start

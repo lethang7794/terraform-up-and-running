@@ -25,3 +25,4 @@ variable "db_name" {
   type        = string
   default     = "example_database_prod"
 }
+

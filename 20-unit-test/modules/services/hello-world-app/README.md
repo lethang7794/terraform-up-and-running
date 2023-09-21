@@ -6,7 +6,7 @@ and [Auto Scaling](https://aws.amazon.com/autoscaling/)) with a load balancer (u
 [ELB](https://aws.amazon.com/elasticloadbalancing/)) in an [Amazon Web Services (AWS) 
 account](http://aws.amazon.com/).
 
-For more info, please see Chapter 8, "Production-grade Terraform code", of 
+For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.
 
 ## Quick start

@@ -4,7 +4,7 @@ This folder contains a [Terraform](https://www.terraform.io/) configuration that
 use the [mysql module](../../modules/data-stores/mysql) to deploy a MySQL database  (using 
 [RDS](https://aws.amazon.com/rds/) in an [Amazon Web Services (AWS) account](http://aws.amazon.com/). 
 
-For more info, please see Chapter 8, "Production-grade Terraform code", of 
+For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.
 
 ## Pre-requisites

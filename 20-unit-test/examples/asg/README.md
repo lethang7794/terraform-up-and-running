@@ -5,7 +5,7 @@ use the [asg-rolling-deploy module](../../modules/cluster/asg-rolling-deploy) to
 (using [EC2](https://aws.amazon.com/ec2/) and [Auto Scaling](https://aws.amazon.com/autoscaling/)) in an 
 [Amazon Web Services (AWS) account](http://aws.amazon.com/). 
 
-For more info, please see Chapter 8, "Production-grade Terraform code", of 
+For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.
 
 ## Pre-requisites

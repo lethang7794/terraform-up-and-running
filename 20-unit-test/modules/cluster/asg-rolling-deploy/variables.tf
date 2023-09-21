@@ -17,9 +17,11 @@ variable "instance_type" {
   description = "The type of EC2 Instances to run (e.g. t2.micro)"
   type        = string
 
+  # An example of how to enforce business constraints using a validation block.
+  # Here, we limit the instance type to those in the AWS Free Tier.
   validation {
     condition     = contains(["t2.micro", "t3.micro"], var.instance_type)
-    error_message = "Only free tier is allowed: t2.micro | t3.micro."
+    error_message = "This module only allows free tier instance types: t2.micro | t3.micro."
   }
 }
 
@@ -69,7 +71,7 @@ variable "enable_autoscaling" {
 # ---------------------------------------------------------------------------------------------------------------------
 
 variable "target_group_arns" {
-  description = "The ARNs of ELB target groups in which to register Instances"
+  description = "The ARNs of load balancer target groups in which to register Instances"
   type        = list(string)
   default     = []
 }

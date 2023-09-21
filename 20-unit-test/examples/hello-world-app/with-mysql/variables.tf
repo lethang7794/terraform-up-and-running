@@ -8,7 +8,6 @@ variable "db_username" {
   type        = string
   sensitive   = true
 }
-
 variable "db_password" {
   description = "The password for the database"
   type        = string
@@ -20,9 +19,20 @@ variable "db_password" {
 # These parameters have reasonable defaults.
 # ---------------------------------------------------------------------------------------------------------------------
 
+variable "server_text" {
+  description = "The text the web server should return"
+  default     = "Hello, World"
+  type        = string
+}
+
+variable "environment" {
+  description = "The name of the environment we're deploying to"
+  type        = string
+  default     = "example"
+}
+
 variable "db_name" {
   description = "The name to use for the database"
   type        = string
-  default     = "example_database_stage"
+  default     = "example_database"
 }
-

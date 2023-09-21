@@ -7,7 +7,7 @@ The Auto Scaling Group is able to do a zero-downtime deployment (using [instance
 refresh](https://docs.aws.amazon.com/autoscaling/ec2/userguide/asg-instance-refresh.html)) when you update any of its 
 properties.
 
-For more info, please see Chapter 8, "Production-grade Terraform code", of 
+For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.
 
 ## Quick start

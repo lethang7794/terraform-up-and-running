@@ -18,17 +18,12 @@ resource "aws_launch_configuration" "example" {
   # Required when using a launch configuration with an auto scaling group.
   lifecycle {
     create_before_destroy = true
-    precondition {
-      condition     = data.aws_ec2_instance_type.instance.free_tier_eligible
-      error_message = "${var.instance_type} is not part of the AWS Free Tier!"
-    }
   }
 }
 
 resource "aws_autoscaling_group" "example" {
   name                 = var.cluster_name
   launch_configuration = aws_launch_configuration.example.name
-
   vpc_zone_identifier  = var.subnet_ids
 
   # Configure integrations with a load balancer
@@ -65,14 +60,6 @@ resource "aws_autoscaling_group" "example" {
       propagate_at_launch = true
     }
   }
-
-  lifecycle {
-    postcondition {
-      condition     = length(self.availability_zones) > 1
-      error_message = "You must use more than one AZ for high availability!"
-    }
-  }
-
 }
 
 resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
@@ -145,10 +132,6 @@ resource "aws_cloudwatch_metric_alarm" "low_cpu_credit_balance" {
   statistic           = "Minimum"
   threshold           = 10
   unit                = "Count"
-}
-
-data "aws_ec2_instance_type" "instance" {
-  instance_type = var.instance_type
 }
 
 locals {

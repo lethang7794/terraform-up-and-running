@@ -1,9 +1,9 @@
-# ALB example
+# Hello-world-app standalone example
 
 This folder contains a [Terraform](https://www.terraform.io/) configuration that shows an example of how to 
-use the [alb module](../../modules/networking/alb) to deploy a load balancer 
-(using [ELB](https://aws.amazon.com/elasticloadbalancing/)) in an [Amazon Web Services (AWS) 
-account](http://aws.amazon.com/). 
+use the [hello-world-app module](../../../modules/services/hello-world-app) to deploy the "Hello, World" app in an 
+[Amazon Web Services (AWS) account](http://aws.amazon.com/). We fill in a mock URL for the DB so that this example
+can be deployed completely standalone, with no other dependencies.
 
 For more info, please see Chapter 9, "How to test Terraform code", of 
 *[Terraform: Up and Running](http://www.terraformupandrunning.com)*.

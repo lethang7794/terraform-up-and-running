@@ -1,4 +1,4 @@
-# Managing Secrets with Terraform
+# Chapter 6. Managing Secrets with Terraform
 
 > What is a **secret**?
 >

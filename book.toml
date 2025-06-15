@@ -2,8 +2,8 @@
 authors      = [ "Le Quang Thang" ]
 language     = "en"
 multilingual = false
-src          = ""                      # Root of repo
-title        = "Notes for DevOps Book"
+src          = ""                                   # Root of repo
+title        = "Notes for Terraform Up and Running"
 
 [preprocessor.callouts]
 [preprocessor.alerts]
@@ -22,9 +22,9 @@ preferred-dark-theme = "macchiato"
 
 smart-punctuation = true
 
-site-url           = "/devops-book/"
-git-repository-url = "https://github.com/lethang7794/devops-book"
-edit-url-template  = "https://github.com/lethang7794/devops-book/edit/main{path}"
+site-url           = "/terraform-up-and-running/"
+git-repository-url = "https://github.com/lethang7794/terraform-up-and-running"
+edit-url-template  = "https://github.com/lethang7794/terraform-up-and-running/edit/main{path}"
 
 additional-js = [
   "theme/mermaid/mermaid.min.js",
